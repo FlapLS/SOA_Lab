@@ -1,0 +1,143 @@
+version: "2.1"
+services:
+  consul:
+    image: consul:latest
+    container_name: consul
+    ports:
+      - "8500:8500"
+    networks:
+      develop:
+        ipv4_address: 172.20.10.1
+
+  haproxy:
+    image: "haproxy:2.2-alpine"
+    container_name: haproxy
+    depends_on:
+      - marine-service-1
+      - marine-service-2
+    ports:
+      - "10000:10000"
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg
+    networks:
+      - develop
+
+  eureka-server:
+    build:
+      context: ./EurekaServer
+    container_name: eureka-server
+    depends_on:
+      - db
+    environment:
+      - EUREKA_HOST=eureka-server
+    networks:
+      - develop
+    ports:
+      - "10100:10100"
+
+  api-proxy:
+    build:
+      context: ./APIProxy
+    container_name: api-proxy
+    environment:
+      - EUREKA_HOST=eureka-server
+      - EUREKA_PORT=10100
+    networks:
+      - develop
+    ports:
+      - "10200:10200"
+
+  starship-service-1:
+    build:
+      context: ./GatewayStarship
+    container_name: starship-service-1
+    depends_on:
+      - db
+      - eureka-server
+    environment:
+      - EUREKA_HOST=eureka-server
+      - EUREKA_PORT=10100
+      - MARINES_HOST=haproxy
+      - MARINES_PORT=10000
+    networks:
+      - develop
+    ports:
+      - "10700:10700"
+
+  starship-service-2:
+    build:
+      context: ./GatewayStarship
+    container_name: starship-service-2
+    depends_on:
+      - db
+      - eureka-server
+    environment:
+      - EUREKA_HOST=eureka-server
+      - EUREKA_PORT=10100
+      - MARINES_HOST=haproxy
+      - MARINES_PORT=10000
+    networks:
+      - develop
+    ports:
+      - "10800:10700"
+
+  marine-service-1:
+    build:
+      context: ./SpacemarineService
+    container_name: marine-service-1
+    depends_on:
+      - db
+      - consul
+    environment:
+      - DATABASE_HOST=soa-db
+      - DATABASE_PORT=5432
+      - DATABASE_USERNAME=admin
+      - DATABASE_PASSWORD=admin
+      - CONSUL_HOST=consul
+      - CONSUL_PORT=8500
+    networks:
+      develop:
+        ipv4_address: 172.20.1.1
+    ports:
+      - "8000:8000"
+
+  marine-service-2:
+    build:
+      context: ./SpacemarineService
+    container_name: marine-service-2
+    depends_on:
+      - db
+      - consul
+    environment:
+      - DATABASE_HOST=soa-db
+      - DATABASE_PORT=5432
+      - DATABASE_USERNAME=admin
+      - DATABASE_PASSWORD=admin
+      - CONSUL_HOST=consul
+      - CONSUL_PORT=8500
+    networks:
+      develop:
+        ipv4_address: 172.20.1.2
+    ports:
+      - "9000:8000"
+
+  db:
+    image: postgres
+    container_name: soa-db
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=soa-db
+    command: postgres -p 5432
+    networks:
+      - develop
+    ports:
+      - "5432:5432"
+
+networks:
+  develop:
+    external:
+      name: develop
+
+# Перед запуском создать сеть:
+# docker network create develop --subnet=172.20.0.0/16

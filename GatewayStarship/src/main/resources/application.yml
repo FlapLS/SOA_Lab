@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: GatewayStarship
+  mvc:
+    path match:
+      matching-strategy: ant_path_matcher
+  cloud:
+    loadbalancer:
+      cache:
+        enabled: false
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:10100}/eureka/
+    healthcheck:
+      enabled: true
+
+server:
+  port: 10700
+  shutdown: graceful
+  servlet:
+    context-path: /
+
+feign:
+  httpclient:
+    disable-ssl-validation: true
+    enabled: true
+  okhttp:
+    enabled: true
+
+service:
+  space-marine-service:
+    timeout: 30000
+    url: http://${MARINES_HOST:localhost}:${MARINES_PORT:8000}
